@@ -57,19 +57,13 @@ fn correct_errors(input: Vec<u8>) -> Vec<u8> {
     if i + 7 > input.len(){
       break;
     }
-    let mut c = hamming7(input[i], input[i+1], input[i+2], input[i+3], input[i+4], input[i+5], input[i+6]);
-    let mut j:usize = 0;
-    while j < 7 {
-      corrected.push(
-        if c == 1 {
-          input[i+j] ^ 0x01
-        } else {
-          input[i+j]
-        });
-      if c != 0 {
-        c -= 1;
+    let c = hamming7(input[i], input[i+1], input[i+2], input[i+3], input[i+4], input[i+5], input[i+6]);
+    for j in 0..7 {
+      if j + 1 != c {
+        corrected.push(input[i+j]);
+      } else {
+        corrected.push(if input[i+j] == 0 { 1 } else { 0 });
       }
-      j += 1;
     }
     i += 7;
   }
@@ -79,37 +73,43 @@ fn correct_errors(input: Vec<u8>) -> Vec<u8> {
 fn reduce(input: Vec<u8>) -> Vec<u8> {
   let mut reduced = Vec::new();
   let mut i:usize = 0;
-  for byte in input {
-    if i % 7 > 4 {
-      reduced.push(byte);
+  loop {
+    if i + 7 > input.len(){
+      break;
     }
-    i += 1;
+    for j in 0..4 {
+      reduced.push(input[i+j]);
+    }
+    i += 7;
   }
   reduced
 }
 
 fn decrypt(input: Vec<u8>) -> Vec<u8> {
-  let mut decrypted = Vec::new();
-  for byte in input {
-    decrypted.push(byte);
+  input
+}
+
+fn group_bytes(bytes: &Vec<u8>) -> Vec<u8> {
+  let mut grouped = Vec::new();
+  let mut i:usize = 0;
+  let mut b:u8 = 0;
+  for byte in bytes {
+    b = b << 1;
+    b = b | byte;
+    i += 1;
+    if i == 8 {
+      grouped.push(b);
+      b = 0;
+      i = 0;
+    }
   }
-  decrypted
+  grouped
 }
 
 fn convert_to_ascii(input: Vec<u8>) -> String {
-  let mut s = String::new();
-  let mut i:usize = 0;
-  while i < input.len() {
-    let mut b:u8 = 0;
-    for j in 0..8 {
-      if i + j < input.len() {
-        b = b << 1;
-        b = b | input[i+j];
-      }
-    }
-    s.push(b as char);
-    i += 8;
-  }
+  let g = group_bytes(&input);
+  println!("{:?}", g);
+  let s = String::from_iter(g.iter().map(|v| { *v as char }));
   s
 }
 
