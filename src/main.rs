@@ -1,8 +1,11 @@
-use std::{
-  fs,
-  io
+use {
+  rand::random,
+  std::fs
 };
 
+/*
+ * Utilities functions (read and write files)
+ */ 
 fn read_file(file: &str) -> Vec<u8> {
   let input = fs::read_to_string(file).unwrap();
   let mut bytes = Vec::new();
@@ -127,17 +130,56 @@ fn decrypt(input: String) -> String {
 }
 
 /*
+ * Encryption of the letter (Vigenère cipher with a random key)
+ */
+fn convert_to_bin(input: String) -> Vec<u8> {
+  let mut bin = Vec::new();
+  for c in input.as_bytes() {
+    for i in 0..8 {
+      bin.push((c >> (7 - i)) & 1);
+    }
+  }
+  bin
+}
+
+fn encrypt(input: String) -> (Vec<u8>, Vec<u8>) {
+  let bin = convert_to_bin(input);
+  let mut encrypted = Vec::new();
+  let mut token = Vec::new();
+  for b in bin {
+    let k = random::<u8>() & 0x01;
+    encrypted.push(b ^ k);
+    token.push(k);
+  }
+  (encrypted, token)
+}
+
+/*
+ * Compress data with the optimal binary encoding
+ */
+fn compress(input: Vec<u8>) -> Vec<u8> {
+  let mut compressed = Vec::new();
+  compressed
+}
+
+/*
  * Main function
  */
 fn main() {
   let input = read_file("doc/lettre.txt");
   let corrected = correct_errors(input);
-  write_bin_file("target/--1-corrected.txt", &corrected);
+  write_bin_file("--1-corrected.txt", &corrected);
   let reduced = reduce(corrected);
-  write_bin_file("target/--2-reduced.txt", &reduced);
+  write_bin_file("--2-reduced.txt", &reduced);
   let ascii = convert_to_ascii(reduced);
-  write_text_file("target/--3-ascii.txt", &ascii);
+  write_text_file("--3-ascii.txt", &ascii);
   let decrypted = decrypt(ascii);
-  write_text_file("target/--4-decrypted.txt", &decrypted);
-  println!("{}", decrypted);
+  write_text_file("--4-decrypted.txt", &decrypted);
+  let (encrypted, token) = encrypt(decrypted);
+  write_bin_file("--5-encrypted.txt", &encrypted);
+  write_bin_file("--5-token.txt", &token);
+  let compressed_message = compress(encrypted);
+  let compressed_token = compress(token);
+  write_bin_file("--6-compressed-message.txt", &compressed_message);
+  write_bin_file("--6-compressed-token.txt", &compressed_token);
 }
