@@ -40,10 +40,7 @@ fn hamming7(c1: u8, c2: u8, c3: u8, c4: u8, c5: u8, c6: u8, c7: u8) -> usize {
 fn correct_errors(input: Vec<u8>) -> Vec<u8> {
   let mut corrected = Vec::new();
   let mut i:usize = 0;
-  loop {
-    if i + 7 > input.len(){
-      break;
-    }
+  while i + 7 < input.len() {
     let c = hamming7(input[i], input[i+1], input[i+2], input[i+3], input[i+4], input[i+5], input[i+6]);
     for j in 0..7 {
       corrected.push(
@@ -61,10 +58,7 @@ fn correct_errors(input: Vec<u8>) -> Vec<u8> {
 fn reduce(input: Vec<u8>) -> Vec<u8> {
   let mut reduced = Vec::new();
   let mut i:usize = 0;
-  loop {
-    if i + 7 > input.len(){
-      break;
-    }
+  while i + 7 < input.len() {
     for j in 0..4 {
       reduced.push(input[i+j]);
     }
@@ -78,8 +72,7 @@ fn group_bytes(bytes: &Vec<u8>) -> Vec<u8> {
   let mut i:usize = 0;
   let mut b:u8 = 0;
   for byte in bytes {
-    b = b << 1;
-    b = b | byte;
+    b = b << 1 | byte;
     i += 1;
     if i == 8 {
       grouped.push(b);
@@ -91,9 +84,7 @@ fn group_bytes(bytes: &Vec<u8>) -> Vec<u8> {
 }
 
 fn convert_to_ascii(input: Vec<u8>) -> String {
-  let g = group_bytes(&input);
-  println!("{:?}", g);
-  let s = String::from_iter(g.iter().map(|v| { *v as char }));
+  let s = String::from_iter(group_bytes(&input).iter().map(|v| { *v as char }));
   s
 }
 
