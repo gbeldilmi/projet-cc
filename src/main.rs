@@ -24,6 +24,9 @@ fn write_text_file(file: &str, ascii: &String) {
   fs::write(file, ascii).unwrap();
 }
 
+/*
+ * Detection and correction of errors
+ */
 fn hamming7(c1: u8, c2: u8, c3: u8, c4: u8, c5: u8, c6: u8, c7: u8) -> usize {
   let p1 = c1 ^ c2 ^ c3;
   let p2 = c1 ^ c2 ^ c4;
@@ -55,10 +58,13 @@ fn correct_errors(input: Vec<u8>) -> Vec<u8> {
   corrected
 }
 
+/*
+ * Reduction of the binary encoding (removal of the control bits)
+ */
 fn reduce(input: Vec<u8>) -> Vec<u8> {
   let mut reduced = Vec::new();
   let mut i:usize = 0;
-  while i + 7 < input.len() {
+  while i + 7 <= input.len() {
     for j in 0..4 {
       reduced.push(input[i+j]);
     }
@@ -67,6 +73,9 @@ fn reduce(input: Vec<u8>) -> Vec<u8> {
   reduced
 }
 
+/*
+ * Conversion to ASCII characters
+ */
 fn group_bytes(bytes: &Vec<u8>) -> Vec<u8> {
   let mut grouped = Vec::new();
   let mut i:usize = 0;
@@ -88,11 +97,38 @@ fn convert_to_ascii(input: Vec<u8>) -> String {
   s
 }
 
+/*
+ * Decryption of the letter (Vigenère cipher with key "python")
+ */
 fn decrypt(input: String) -> String {
-  input
+  let key = "python";
+  let diff: Vec<u8> = key.chars().map(|c| { c as u8 }).collect(); 
+  let mut decrypted = String::new();
+  let mut i: usize = 0;
+  for c in input.chars() {
+    let b = if c >= 'a' && c <= 'z' {
+      'a' as u8
+    } else if c >= 'A' && c <= 'Z' {
+      'A' as u8
+    } else {
+      0
+    };
+    if b != 0 {
+      let l = c as u8 - b;
+      let k = diff[i] - 'a' as u8;
+      let d = (l + 26 - k) % 26 + b;
+      decrypted.push(d as char);
+      i = (i + 1) % key.len();
+    } else {
+      decrypted.push(c);
+    }
+  }
+  decrypted
 }
 
-
+/*
+ * Main function
+ */
 fn main() {
   let input = read_file("doc/lettre.txt");
   let corrected = correct_errors(input);
@@ -103,4 +139,5 @@ fn main() {
   write_text_file("target/--3-ascii.txt", &ascii);
   let decrypted = decrypt(ascii);
   write_text_file("target/--4-decrypted.txt", &decrypted);
+  println!("{}", decrypted);
 }
