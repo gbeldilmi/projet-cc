@@ -12,7 +12,7 @@ fn read_file(file: &str) -> Vec<u8> {
   bytes
 }
 
-fn write_file(file: &str, bytes: &Vec<u8>) {
+fn write_bin_file(file: &str, bytes: &Vec<u8>) {
   let mut output = String::new();
   for byte in bytes {
     output.push((*byte | 0x30) as char);
@@ -20,7 +20,7 @@ fn write_file(file: &str, bytes: &Vec<u8>) {
   fs::write(file, output).unwrap();
 }
 
-fn write_ascii_file(file: &str, ascii: &String) {
+fn write_text_file(file: &str, ascii: &String) {
   fs::write(file, ascii).unwrap();
 }
 
@@ -85,10 +85,6 @@ fn reduce(input: Vec<u8>) -> Vec<u8> {
   reduced
 }
 
-fn decrypt(input: Vec<u8>) -> Vec<u8> {
-  input
-}
-
 fn group_bytes(bytes: &Vec<u8>) -> Vec<u8> {
   let mut grouped = Vec::new();
   let mut i:usize = 0;
@@ -113,15 +109,19 @@ fn convert_to_ascii(input: Vec<u8>) -> String {
   s
 }
 
+fn decrypt(input: String) -> String {
+  input
+}
+
 
 fn main() {
   let input = read_file("doc/lettre.txt");
   let corrected = correct_errors(input);
-  write_file("target/-corrected.txt", &corrected);
+  write_bin_file("target/1-corrected.txt", &corrected);
   let reduced = reduce(corrected);
-  write_file("target/-reduced.txt", &reduced);
-  let decrypted = decrypt(reduced);
-  write_file("target/-decrypted.txt", &decrypted);
-  let ascii = convert_to_ascii(decrypted);
-  write_ascii_file("target/-ascii.txt", &ascii);
+  write_bin_file("target/2-reduced.txt", &reduced);
+  let ascii = convert_to_ascii(reduced);
+  write_text_file("target/3-ascii.txt", &ascii);
+  let decrypted = decrypt(ascii);
+  write_text_file("target/4-decrypted.txt", &decrypted);
 }
