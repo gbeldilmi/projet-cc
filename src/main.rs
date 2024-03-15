@@ -157,8 +157,26 @@ fn encrypt(input: String) -> (Vec<u8>, Vec<u8>) {
 /*
  * Compress data with the optimal binary encoding
  */
+fn optimal_encoding(data: Vec<u8>) -> () {
+  let mut stats = Vec::new();
+  for i in 0..256 {
+    stats.push((i, 0));
+  }
+  for i in data {
+    stats[i as usize].1 += 1;
+  }
+  stats.sort_by(|a, b| b.1.cmp(&a.1));
+  println!("{:?}", stats);
+  ////////////////////////////////////////////////////////////////////////
+}
+
 fn compress(input: Vec<u8>) -> Vec<u8> {
+  let data = group_bytes(&input);
   let mut compressed = Vec::new();
+  optimal_encoding(data);
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
   compressed
 }
 
