@@ -205,10 +205,11 @@ fn encode_node(nodes: &Vec<(bool, u8, u128, usize, usize)>, i: usize, prefix: St
   encoding
 }
 
-fn huffman(stats: Vec<(u8, u128)>) -> Vec<(u8, String)> { // (value, frequency) -> (value, encoding)
+fn huffman(stats: &Vec<(u8, u128)>) -> Vec<(u8, String)> { // (value, frequency) -> (value, encoding)
   let mut nodes = Vec::new();
-  let max_nodes = 2 * stats.len() - 1;
   for (value, frequency) in stats {
+    let value = *value;
+    let frequency = *frequency;
     nodes.push((true, value, frequency, 0, 0));
   }
   loop {
@@ -230,10 +231,15 @@ fn huffman(stats: Vec<(u8, u128)>) -> Vec<(u8, String)> { // (value, frequency) 
   r
 }
 
-fn encoding_to_string(encoding: &Vec<(u8, String)>) -> String {
+fn encoding_to_string(stats: &Vec<(u8, u128)>, encoding: &Vec<(u8, String)>) -> String {
+  // (value, frequency) join (value, encoding) on value --> (value, frequency, encoding)
   let mut s = String::new();
-  for (value, encoding) in encoding {
-    s.push_str(&format!("{:08b} ({}): {}\n", *value, *value, encoding));
+  for (v1, f) in stats {
+    for (v2, e) in encoding {
+      if v1 == v2 {
+        s.push_str(&format!("{:08b} \t ({:03}): \t {} \t {}\n", v1, v2, e, f));
+      }
+    }
   }
   s
 }
@@ -241,7 +247,7 @@ fn encoding_to_string(encoding: &Vec<(u8, String)>) -> String {
 fn compress(input: Vec<u8>) -> (String, String) {
   let data = group_bytes(&input);
   let stats = stats(&data); // (value, frequency)
-  let huffman = huffman(stats); // (value, encoding)
+  let huffman = huffman(&stats); // (value, encoding)
   let mut compressed = String::new();
   for byte in data {
     for (value, encoding) in &huffman {
@@ -251,7 +257,7 @@ fn compress(input: Vec<u8>) -> (String, String) {
       }
     }
   }
-  (compressed, encoding_to_string(&huffman))
+  (compressed, encoding_to_string(&stats, &huffman))
 }
 
 /*
