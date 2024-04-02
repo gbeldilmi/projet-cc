@@ -157,27 +157,101 @@ fn encrypt(input: String) -> (Vec<u8>, Vec<u8>) {
 /*
  * Compress data with the optimal binary encoding
  */
-fn optimal_encoding(data: Vec<u8>) -> () {
+fn stats(data: &Vec<u8>) -> Vec<(u8, u128)> {
   let mut stats = Vec::new();
   for i in 0..256 {
-    stats.push((i, 0));
+    stats.push((i as u8, 0));
   }
   for i in data {
-    stats[i as usize].1 += 1;
+    stats[*i as usize].1 += 1;
   }
   stats.sort_by(|a, b| b.1.cmp(&a.1));
-  println!("{:?}", stats);
-  ////////////////////////////////////////////////////////////////////////
+  stats
 }
 
-fn compress(input: Vec<u8>) -> Vec<u8> {
-  let data = group_bytes(&input);
-  let mut compressed = Vec::new();
-  optimal_encoding(data);
-  ////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////
+fn get_min(nodes: &Vec<(bool, u8, u128, usize, usize)>, ignore: (bool, u128, usize)) -> isize { // get the index of the node with the smallest frequency and different from the ignore node
+  let mut min = -1; // -1 means no node found
+  for j in 0..nodes.len() {
+    if nodes[j].0 {
+      if (ignore.0 && nodes[j].2 >= ignore.1 && j != ignore.2) || (!ignore.0) {
+        if min == -1 || nodes[j].2 < nodes[min as usize].2 {
+          min = j as isize;
+        }
+      }
+    }
+  }
+  min
+}
 
-  compressed
+fn get_mins(nodes: &Vec<(bool, u8, u128, usize, usize)>) -> (isize, isize) { // get the index of the two nodes with the smallest frequency
+  let mut mins = (-1, -1);
+  mins.0 = get_min(&nodes, (false, 0, 0));
+  mins.1 = get_min(&nodes, (true, nodes[mins.0 as usize].2, mins.0 as usize));
+  mins
+}
+
+fn encode_node(nodes: &Vec<(bool, u8, u128, usize, usize)>, i: usize, prefix: String) -> Vec<(u8, String)> {
+  let mut encoding = Vec::new();
+  if nodes[i].3 == 0 && nodes[i].4 == 0 { // leaf node
+    encoding.push((nodes[i].1, prefix));
+  } else { // internal node
+    let mut left = prefix.clone();
+    left.push('0');
+    let mut right = prefix.clone();
+    right.push('1');
+    encoding.append(&mut encode_node(nodes, nodes[i].3, left));
+    encoding.append(&mut encode_node(nodes, nodes[i].4, right));
+  }
+  encoding
+}
+
+fn huffman(stats: Vec<(u8, u128)>) -> Vec<(u8, String)> { // (value, frequency) -> (value, encoding)
+  let mut nodes = Vec::new();
+  let max_nodes = 2 * stats.len() - 1;
+  for (value, frequency) in stats {
+    nodes.push((true, value, frequency, 0, 0));
+  }
+  loop {
+    let (min1, min2) = get_mins(&nodes);
+    if min1 == -1 || min2 == -1 {
+      break;
+    } else {
+      let min1 = min1 as usize;
+      let min2 = min2 as usize;
+      let sum_values = nodes[min1].2 + nodes[min2].2;
+      nodes.push((true, 0, sum_values, min1, min2));
+      nodes[min1].0 = false;
+      nodes[min2].0 = false;
+    }
+  }
+  // convert to (value, encoding)
+  let root = get_mins(&nodes).0 as usize;
+  let r = encode_node(&nodes, root, String::new());
+  r
+}
+
+fn encoding_to_string(encoding: &Vec<(u8, String)>) -> String {
+  let mut s = String::new();
+  for (value, encoding) in encoding {
+    s.push_str(&format!("{:08b} ({}): {}\n", *value, *value, encoding));
+  }
+  s
+}
+
+fn compress(input: Vec<u8>) -> (String, String) {
+  let data = group_bytes(&input);
+  let stats = stats(&data); // (value, frequency)
+  let huffman = huffman(stats); // (value, encoding)
+  let mut compressed = String::new();
+  for byte in data {
+    for (value, encoding) in &huffman {
+      if byte == *value {
+        compressed.push_str(encoding);
+        break;
+      }
+    }
+  }
+  (compressed, encoding_to_string(&huffman))
 }
 
 /*
@@ -198,6 +272,8 @@ fn main() {
   write_bin_file("--5-token.txt", &token);
   let compressed_message = compress(encrypted);
   let compressed_token = compress(token);
-  write_bin_file("--6-compressed-message.txt", &compressed_message);
-  write_bin_file("--6-compressed-token.txt", &compressed_token);
+  write_text_file("--6-compressed-message.txt", &compressed_message.0);
+  write_text_file("--6-compressed-message-encoding.txt", &compressed_message.1);
+  write_text_file("--6-compressed-token.txt", &compressed_token.0);
+  write_text_file("--6-compressed-token-encoding.txt", &compressed_token.1);
 }
