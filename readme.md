@@ -1,4 +1,4 @@
 # Projet de Codage et Cryptographie
 
-[Sujet](doc/sujet.pdf)
-
+- [Sujet](doc/sujet.pdf)
+- [Rapport](doc/rapport.md)
