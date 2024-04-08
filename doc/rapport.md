@@ -258,4 +258,199 @@ Nous avons donc réussi à déchiffrer la lettre. Le résultat de cette étape a
 
 ## Etape 5 : Chiffrer la lettre
 
+Afin de chiffrer la lettre, nous devons utiliser une variante du chiffrement de Vigenère. En effet, le chiffrement de Vigenère est un chiffrement polyalphabétique qui utilise une clé pour chiffrer un message. Cependant, ce chiffrement est vulnérable à une attaque par force brute. Pour pallier à cette faiblesse, nous allons utiliser un chiffrement de Vigenère avec une clé aléatoire de longueur égale à celle du message à chiffrer.
+
+Pour cela, nous avons implémenté une fonction en Rust chiffrant ce message avec une clé aléatoire créée à partir de la fonction `random` de la bibliothèque standard de Rust. Voici le code de cette fonction, elle prend en paramètre le message à chiffrer et retourne le message chiffré ainsi que la clé de chiffrement utilisée :
+
+```rust
+fn encrypt(input: String) -> (Vec<u8>, Vec<u8>) {
+  let bin = convert_to_bin(input); // convert the input to a vector of bits
+  let mut encrypted = Vec::new();
+  let mut token = Vec::new();
+  for b in bin {                   // for each bit in the input
+    let k = random::<u8>() & 0x01; // generate a random bit
+    encrypted.push(b ^ k);         // add the encrypted bit to the encrypted vector
+    token.push(k);                 // add the token bit to the token vector
+  }
+  (encrypted, token) // return the encrypted vector and the token vector
+}
+```
+
+Notons que dans notre cas, nous chiffrons le message en binaire, permettant de chiffrer les caractères alphanumériques ainsi que les caractères spéciaux, rendant le message chiffré plus difficile à déchiffrer.
+
+La fonction `convert_to_bin` permet de convertir le message (une chaine de caractères) en une suite de bits. Cette fonction est définie comme suit :
+
+```rust
+fn convert_to_bin(input: String) -> Vec<u8> {
+  let mut bin = Vec::new();
+  for c in input.as_bytes() {       // for each byte in the input
+    for i in 0..8 {                 // for each bit in the byte
+      bin.push((c >> (7 - i)) & 1); // add the bit to the bin vector
+    }
+  }
+  bin
+}
+```
+
+Le résultat de cette étape apparaîtra dans le fichier `--5-encrypted.txt`, sa clé de chiffrement apparaîtra dans le fichier `--5-token.txt`.
+
 ## Etape 6 : Compresser la lettre sa clé de chiffrement
+
+Afin de compresser la lettre chiffrée et sa clé de chiffrement, nous devons utiliser un algorithme de compression. Pour cela, nous avons décidé d'utiliser l'algorithme de Huffman. Cet algorithme permet d'obtenir le codage binaire optimal d'un message en remplaçant les occurences les plus fréquents par des codes binaires plus courts. Dans notre cas, nous allons compresser un message binaire, nous allons donc segmenter le message en octets et obtenir le codage optimal de ces derniers.
+
+L'algorithme de Huffman est composé de plusieurs étapes :
+
+- Tout d'abord, il faut compter le nombre d'occurrences de chaque octet dans le message à compresser.
+- Ensuite, il faut créer un arbre binaire de Huffman à partir de ces occurrences.
+- Enfin, il faut parcourir l'arbre pour obtenir le codage binaire de chaque octet.
+- Et pour finir, il faut remplacer chaque octet par son codage binaire optimal correspondant.
+
+Cela nous donne le code suivant :
+
+```rust
+fn compress(input: Vec<u8>) -> (String, String) {
+  let data = group_bytes(&input); // group the bytes by 8
+  let stats = stats(&data);       // get statistics on the values of the data (value, frequency)
+  let huffman = huffman(&stats);  // get the Huffman encoding of the values (value, encoding)
+  let mut compressed = String::new();
+  for byte in data {                    // for each byte in the data
+    for (value, encoding) in &huffman { // for each value and its encoding
+      if byte == *value {               // if the byte is the value
+        compressed.push_str(encoding);  // add the encoding to the compressed string
+        break;
+      }
+    }
+  }
+  // return the compressed string and the encoding string
+  (compressed, encoding_to_string(&stats, &huffman))
+}
+```
+
+Nous avons déjà vu la fonctions `group_bytes()` précédemment, nous détaillerons le reste des fonctions utilisées dans cette étape dans les paragraphes suivants.
+
+Afin d'obtenir le nombre d'occurrences de chaque valeur d'octet, nous avons implémenté une fonction en Rust permettant de compter ces occurrences pour chaque valeur que peut prendre l'octet. Voici le code de la fonction `stats()` :
+
+```rust
+fn stats(data: &Vec<u8>) -> Vec<(u8, u128)> { // (value, number of occurrences)
+  let mut stats = Vec::new();
+  for i in 0..256 {           // for each possible value
+    stats.push((i as u8, 0)); // initialize the number of occurrences to 0
+  }
+  for i in data {              // for each value in the data
+    stats[*i as usize].1 += 1; // increment the number of occurrences for this value
+  }
+  stats.sort_by(|a, b| b.1.cmp(&a.1)); // sort the values by decreasing number of occurrences
+  stats
+}
+```
+
+La fonction `stats()` retourne un vecteur de tuples contenant chacun la valeur de l'octet et le nombre d'occurrences de cette valeur dans le message à compresser. Ce vecteur est trié par ordre décroissant du nombre d'occurrences puis transmis à la fonction `huffman()` dont voici le code :
+
+```rust
+fn huffman(stats: &Vec<(u8, u128)>) -> Vec<(u8, String)> {
+  let mut nodes = Vec::new();
+  for (value, frequency) in stats { // for each value and its frequency, create a node
+    let value = *value;             //  (availability, value, frequency, left child index, right child index)
+    let frequency = *frequency;
+    nodes.push((true, value, frequency, 0, 0));
+  }
+  loop {
+    let (min1, min2) = get_mins(&nodes); // get the indexes of the two nodes with the smallest frequency
+    if min1 == -1 || min2 == -1 { // if there is only one node left, stop, it is the root
+      break;
+    } else {
+      let min1 = min1 as usize;
+      let min2 = min2 as usize;
+      let sum_values = nodes[min1].2 + nodes[min2].2; // create a new node with the sum of the frequencies of the two nodes
+      nodes.push((true, 0, sum_values, min1, min2));  // and add it to the nodes
+      nodes[min1].0 = false;                          // mark the two nodes as unavailable
+      nodes[min2].0 = false;
+    }
+  }
+  // convert to (value, encoding)
+  let root = get_mins(&nodes).0 as usize; // the root is the last node added
+  let r = encode_node(&nodes, root, String::new()); // encode the nodes of the tree
+  r
+}
+```
+
+Notons que dans le cas présent, nous avons choisi de ne pas utiliser de structure de données pour représenter les noeuds de l'arbre de Huffman, mais un vecteur de tuples. Chaque tuple représente un noeud de l'arbre et est composé de cinq éléments : un booléen indiquant si le noeud est disponible (si ce dernier n'a pas de parent), la valeur de l'octet, le nombre d'occurrences de cette valeur, l'index du fils gauche et l'index du fils droit.
+
+Dans le cas d'une feuille de l'arbre, les indices des fils gauche et droit seront égaux à 0. Dans le cas d'un noeud interne, ces indices correspondront aux indices des noeuds fils dans le vecteur `nodes`, la valeur de l'octet sera égale à 0 et le nombre d'occurrences sera égal à la somme des occurrences des noeuds fils.
+
+La première boucle `for` permet de créer les noeuds feuilles de l'arbre de Huffman à partir des statistiques obtenues précédemment. La seconde boucle `loop` permet de lier les noeuds entre eux pour former l'arbre de Huffman. La fonction `get_mins()` permet de récupérer les indices des deux noeuds ayant les plus petites fréquences. Cette dernière fait appel à deux reprises à la fonction `get_min()` qui retourne l'indice du noeud ayant la plus petite fréquence, qui n'est pas encore lié à un autre noeud tout en pouvant spécifier un noeud à ignorer. Voici le code de ces deux fonctions :
+
+```rust
+fn get_min(nodes: &Vec<(bool, u8, u128, usize, usize)>, ignore: (bool, usize)) -> isize {
+  let mut min = -1;  // -1 means no node found
+  for j in 0..nodes.len() { // for each node
+    if nodes[j].0 {         // if the node is available
+      if (ignore.0 && j != ignore.1) || (!ignore.0) {        // if the node is not ignored
+        if min == -1 || nodes[j].2 < nodes[min as usize].2 { // if the node has a smaller frequency than the current minimum
+          min = j as isize;                                  // update the minimum
+        }
+      }
+    }
+  }
+  min
+}
+
+fn get_mins(nodes: &Vec<(bool, u8, u128, usize, usize)>) -> (isize, isize) {
+  let mut mins = (-1, -1);
+  mins.0 = get_min(&nodes, (false, 0));
+  mins.1 = get_min(&nodes, (true, mins.0 as usize));
+  mins
+}
+```
+
+Si il ne reste qu'un seul noeud disponible, c'est que l'arbre est complet et que la racine est le dernier noeud ajouté. La fonction `huffman()` sort de sa seconde boucle et appelle la fonction `encode_node()` qui permet de parcourir l'arbre de Huffman pour obtenir le codage binaire de chaque valeur d'octet. Voici le code de cette fonction :
+
+```rust
+fn encode_node(nodes: &Vec<(bool, u8, u128, usize, usize)>, i: usize, prefix: String) -> Vec<(u8, String)> {
+  let mut encoding = Vec::new();
+  if nodes[i].3 == 0 && nodes[i].4 == 0 { // Leaf node case (no child)
+    encoding.push((nodes[i].1, prefix));
+  } else {                                // Internal node case (two children)
+    let mut left = prefix.clone();
+    let mut right = prefix.clone();
+    left.push('0');
+    right.push('1');
+    encoding.append(&mut encode_node(nodes, nodes[i].3, left)); // encode the left child
+    encoding.append(&mut encode_node(nodes, nodes[i].4, right)); // encode the right child
+  }
+  encoding
+}
+```
+
+La fonction `encode_node()` retourne un vecteur de tuples contenant chacun la valeur de l'octet et son codage binaire optimal trouvé. Une fois le résultat retourné, la fonction `compress()` remplacera chaque octet par son codage binaire optimal. Et pour finir, la fonction `encoding_to_string()` permet de convertir le vecteur de tuples en une chaîne de caractères listant, pour chaque valeur d'octet, sa fréquence et son codage binaire choisi afin d'avoir ainsi un suivi du résultat de la compression.
+
+Le résultat de la compression du message apparaîtra dans le fichier `--6-compressed-message.txt`, le résultat de la compression de la clé de chiffrement apparaîtra dans le fichier `--6-compressed-token.txt` et leur encodage de Huffman apparaîtront dans les fichiers `--6-compressed-message-encoding.txt` et `--6-compressed-token-encoding.txt`.
+
+Afin de vérifier l'efficaicité de notre compression, nous avons utilisé les commandes suivantes :
+
+```bash
+cat ./--5-encrypted.txt | wc -c
+cat ./--6-compressed-message.txt | wc -c
+```
+
+Contrairement à ce qui était attendu, la taille du fichier n'a pas été significativement réduite. Cela est dû au fait que le message chiffré est proche d'un message aléatoire dû à la clé aléatoire utilisée pour le chiffrer en binaire. En effet, un message aléatoire ne peut pas être compressé efficacement par l'algorithme de Huffman car les valeurs d'octets sont presque toutes équiprobables.
+
+Afin de vérifier que notre compression fonctionne correctement, nous avons réalisé un programme de test en Rust reproduisant toutes les étapes précédentes mais en omettant l'étape de chiffrement. Nous avons donc modifié la fonction `encrypt()` pour qu'elle utilise une clé de chiffrement composée uniquement de zéros, ainsi le message chiffré sera identique au message en clair avec les répétitions que cela implique. Nous avons ensuite compressé le message désormais non-chiffré.
+
+Voici le code de la fonction `encrypt()` modifiée :
+
+```rust
+fn encrypt(input: String) -> (Vec<u8>, Vec<u8>) {
+  let bin = convert_to_bin(input); // convert the input to a vector of bits
+  let mut encrypted = Vec::new();
+  let mut token = Vec::new();
+  for b in bin {                   // for each bit in the input
+    let k = 0;                     // the key is now fixed to 0
+    encrypted.push(b ^ k);         // add the encrypted bit to the encrypted vector
+    token.push(k);                 // add the token bit to the token vector
+  }
+  (encrypted, token) // return the encrypted vector and the token vector
+}
+```
+
+Enfin, nous avons comparé la taille de notre message non-chiffré avec la taille du message compressé avec les même commandes utilisées précédemment. Les résultats obtenus ont été respectivement `27280` pour le message non-chiffré et `14622` pour le message compressé. Cela nous donne une réduction de près de la moitié de la taille du message initial, ce qui est un résultat très satisfaisant.
