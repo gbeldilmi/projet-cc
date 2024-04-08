@@ -454,3 +454,9 @@ fn encrypt(input: String) -> (Vec<u8>, Vec<u8>) {
 ```
 
 Enfin, nous avons comparé la taille de notre message non-chiffré avec la taille du message compressé avec les même commandes utilisées précédemment. Les résultats obtenus ont été respectivement `27280` pour le message non-chiffré et `14622` pour le message compressé. Cela nous donne une réduction de près de la moitié de la taille du message initial, ce qui est un résultat très satisfaisant.
+
+## Conclusion
+
+Nous avons pu réaliser toutes les étapes demandées dans le sujet, à savoir : la détection et la correction d'erreurs, la traduction des bits en caractères alphanumériques, le déchiffrement de la lettre, le chiffrement de la lettre, la compression de la lettre et de sa clé de chiffrement.
+
+Ce projet nous a permis de mettre en pratique les notions de codage de l'information vues en cours ainsi que d'exercer nos compétences de programmation en Rust. 
